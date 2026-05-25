@@ -41,7 +41,11 @@ node_modules/
 
 # Editor
 .idea/
+.vscode/
 *.swp
 *.swo
 strudel-vscode/
 performances/
+
+# Internal dev docs
+docs/superpowers/

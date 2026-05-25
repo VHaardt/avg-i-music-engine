@@ -2,7 +2,9 @@
 
 > Compose music in plain language. A multi-agent AI system translates your words into live [Strudel](https://strudel.cc) code, plays it in the browser, and hands you real-time controls — all without touching a DAW.
 
-![AVG I screenshot](img/screenshot.png)
+![AVG I — main interface](img/screenshot-main.png)
+
+![AVG I — performance mode](img/screenshot-performance.png)
 
 ---
 
