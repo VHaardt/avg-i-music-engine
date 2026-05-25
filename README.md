@@ -124,19 +124,19 @@ Strudel REPL → Compressor → EQ (3-band) → Drive → Reverb → Delay → M
 ### System overview
 
 ```
-  ┌──────────────────────────────────────────────────────────────────┐
-  │  Browser                                                         │
-  │                                                                  │
+  ┌─────────────────────────────────────────────────────────────────┐
+  │  Browser                                                        │
+  │                                                                 │
   │  ┌─────────────┐  ┌──────────────┐  ┌────────────────────────┐  │
   │  │  AI Chat    │  │ Monaco Editor│  │   Strudel REPL         │  │
   │  │  (streaming)│  │ (Strudel DSL)│  │   Web Audio API        │  │
   │  └──────┬──────┘  └──────┬───────┘  │   FX Chain             │  │
-  │         │                │          │   Waveform (FFT)        │  │
+  │         │                │          │   Waveform (FFT)       │  │
   │  ┌──────▼────────────────▼───────┐  └────────────┬───────────┘  │
   │  │         useWebSocket          │               │              │
   │  │   chunk accumulation · state  │◄──────────────┘              │
   │  └──────────────┬────────────────┘                              │
-  │                 │  ws://localhost:8000/ws                        │
+  │                 │  ws://localhost:8000/ws                       │
   └─────────────────┼──────────────────────────────────────────────-┘
                     │
   ┌─────────────────▼──────────────────────────────────────────────┐
@@ -145,32 +145,32 @@ Strudel REPL → Compressor → EQ (3-band) → Drive → Reverb → Delay → M
   └─────────────────┬──────────────────────────────────────────────┘
                     │
   ┌─────────────────▼──────────────────────────────────────────────┐
-  │  LangGraph  StateGraph  (graph.py)           MusicState         │
-  │                                                                 │
+  │  LangGraph  StateGraph  (graph.py)           MusicState        │
+  │                                                                │
   │        ┌────────────┐                                          │
   │        │ Supervisor │  classifies intent → routes to agents    │
   │        └─────┬──────┘                                          │
-  │              │                                                  │
+  │              │                                                 │
   │    ┌─────────┼──────────────────────┐                          │
   │    │         │                      │                          │
   │    ▼         ▼                      ▼                          │
-  │ ┌──────┐ ┌────────┐          ┌─────────────┐                  │
-  │ │Music │ │Creative│          │   Error     │                  │
-  │ │Expert│ │ Agent  │          │  Recovery   │                  │
-  │ └──┬───┘ └────────┘          │   Agent     │                  │
-  │    │     (autonomous         └─────────────┘                  │
+  │ ┌──────┐ ┌────────┐          ┌─────────────┐                   │
+  │ │Music │ │Creative│          │   Error     │                   │
+  │ │Expert│ │ Agent  │          │  Recovery   │                   │
+  │ └──┬───┘ └────────┘          │   Agent     │                   │
+  │    │     (autonomous         └─────────────┘                   │
   │    │      variations)        (fixes Strudel runtime errors)    │
   │    ▼                                                           │
-  │ ┌──────────────┐                                              │
+  │ ┌──────────────┐                                               │
   │ │Strudel Coder │  natural language specs → Strudel pattern     │
-  │ └──────┬───────┘                                              │
+  │ └──────┬───────┘                                               │
   │        │                                                       │
-  │        ├──────────────────────┐                               │
-  │        ▼                      ▼                               │
-  │  ┌───────────┐        ┌───────────────┐                       │
-  │  │   Knobs   │        │   Response    │                       │
-  │  │   Agent   │        │    Agent      │                       │
-  │  └───────────┘        └───────────────┘                       │
+  │        ├──────────────────────┐                                │
+  │        ▼                      ▼                                │
+  │  ┌───────────┐        ┌───────────────┐                        │
+  │  │   Knobs   │        │   Response    │                        │
+  │  │   Agent   │        │    Agent      │                        │
+  │  └───────────┘        └───────────────┘                        │
   │  generates real-time   streams human reply                     │
   │  parameter controls    to frontend                             │
   │                                                                │
@@ -182,7 +182,7 @@ Strudel REPL → Compressor → EQ (3-band) → Drive → Reverb → Delay → M
   └────────────────────────────────────────────────────────────────┘
 
   ┌────────────────────────────────────────────────────────────────┐
-  │  MIDI Service  (midi_service.py)              background thread │
+  │  MIDI Service  (midi_service.py)             background thread │
   │  24 PPQN clock · Start/Stop · BPM sync · port selection        │
   └────────────────────────────────────────────────────────────────┘
 ```
