@@ -1,0 +1,11 @@
+llm:
+  model: "ollama/gemma3:4b"    # modello locale Ollama (default)
+  # model: "ollama/mistral"
+  # model: "anthropic/claude-haiku-4-5-20251001"
+  # model: "openai/gpt-4o-mini"
+  temperature: 0.3
+  max_tokens: 10000
+
+  # Ollama: assicurati che il server sia avviato con:
+  #   ollama serve
+  # Modelli locali disponibili: gemma3:4b, mistral:latest

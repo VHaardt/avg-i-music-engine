@@ -1,0 +1,46 @@
+# Python
+backend/.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.mypy_cache/
+.pytest_cache/
+backend/.coverage
+backend/htmlcov/
+
+# Environment / secrets
+# .env.example is intentionally NOT excluded — it contains only placeholders
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# Build artifacts
+dist/
+build/
+frontend/coverage/
+frontend/dist/
+
+# Logs
+logs/
+*.log
+
+# Node
+node_modules/
+
+# Dev tooling (internal)
+.strudel
+.superpowers/
+.claude/
+.claude-progress.md
+
+# OS
+.DS_Store
+
+# Editor
+.idea/
+*.swp
+*.swo
+strudel-vscode/
