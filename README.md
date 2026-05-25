@@ -121,30 +121,123 @@ Strudel REPL → Compressor → EQ (3-band) → Drive → Reverb → Delay → M
 
 ## Architecture
 
+### System overview
+
 ```
-┌─────────────────────────────────────────────────┐
-│                    Frontend (React + Vite)       │
-│  Chat │ Monaco Editor │ Strudel Player │ Knobs   │
-│  Waveform │ BPM+EQ │ Presets │ Scene Queue       │
-└──────────────────┬──────────────────────────────┘
-                   │  WebSocket  (ws://localhost:8000/ws)
-┌──────────────────▼──────────────────────────────┐
-│                 Backend (FastAPI + LangGraph)    │
-│                                                 │
-│  Supervisor ──► Music Expert ──► Strudel Coder  │
-│       │                                │        │
-│       └──► Creative Agent              │        │
-│       └──► Error Recovery Agent        │        │
-│                              Knobs Agent        │
-│                              Response Agent     │
-│                                                 │
-│  MIDI Service  (python-rtmidi, 24 PPQN clock)   │
-│  LiteLLM       (Ollama / OpenAI / Anthropic)    │
-└─────────────────────────────────────────────────┘
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  Browser                                                         │
+  │                                                                  │
+  │  ┌─────────────┐  ┌──────────────┐  ┌────────────────────────┐  │
+  │  │  AI Chat    │  │ Monaco Editor│  │   Strudel REPL         │  │
+  │  │  (streaming)│  │ (Strudel DSL)│  │   Web Audio API        │  │
+  │  └──────┬──────┘  └──────┬───────┘  │   FX Chain             │  │
+  │         │                │          │   Waveform (FFT)        │  │
+  │  ┌──────▼────────────────▼───────┐  └────────────┬───────────┘  │
+  │  │         useWebSocket          │               │              │
+  │  │   chunk accumulation · state  │◄──────────────┘              │
+  │  └──────────────┬────────────────┘                              │
+  │                 │  ws://localhost:8000/ws                        │
+  └─────────────────┼──────────────────────────────────────────────-┘
+                    │
+  ┌─────────────────▼──────────────────────────────────────────────┐
+  │  FastAPI  (main.py)                                            │
+  │  WebSocket handler · REST /health · REST /midi/ports           │
+  └─────────────────┬──────────────────────────────────────────────┘
+                    │
+  ┌─────────────────▼──────────────────────────────────────────────┐
+  │  LangGraph  StateGraph  (graph.py)           MusicState         │
+  │                                                                 │
+  │        ┌────────────┐                                          │
+  │        │ Supervisor │  classifies intent → routes to agents    │
+  │        └─────┬──────┘                                          │
+  │              │                                                  │
+  │    ┌─────────┼──────────────────────┐                          │
+  │    │         │                      │                          │
+  │    ▼         ▼                      ▼                          │
+  │ ┌──────┐ ┌────────┐          ┌─────────────┐                  │
+  │ │Music │ │Creative│          │   Error     │                  │
+  │ │Expert│ │ Agent  │          │  Recovery   │                  │
+  │ └──┬───┘ └────────┘          │   Agent     │                  │
+  │    │     (autonomous         └─────────────┘                  │
+  │    │      variations)        (fixes Strudel runtime errors)    │
+  │    ▼                                                           │
+  │ ┌──────────────┐                                              │
+  │ │Strudel Coder │  natural language specs → Strudel pattern     │
+  │ └──────┬───────┘                                              │
+  │        │                                                       │
+  │        ├──────────────────────┐                               │
+  │        ▼                      ▼                               │
+  │  ┌───────────┐        ┌───────────────┐                       │
+  │  │   Knobs   │        │   Response    │                       │
+  │  │   Agent   │        │    Agent      │                       │
+  │  └───────────┘        └───────────────┘                       │
+  │  generates real-time   streams human reply                     │
+  │  parameter controls    to frontend                             │
+  │                                                                │
+  └────────────────────────────┬───────────────────────────────────┘
+                               │
+  ┌────────────────────────────▼───────────────────────────────────┐
+  │  LiteLLM  (llm_utils.py)                                       │
+  │  unified interface → Ollama · OpenAI · Anthropic               │
+  └────────────────────────────────────────────────────────────────┘
+
+  ┌────────────────────────────────────────────────────────────────┐
+  │  MIDI Service  (midi_service.py)              background thread │
+  │  24 PPQN clock · Start/Stop · BPM sync · port selection        │
+  └────────────────────────────────────────────────────────────────┘
 ```
 
-**Backend stack:** Python 3.11, FastAPI, LangGraph, LiteLLM, python-rtmidi  
-**Frontend stack:** React 18, TypeScript, Vite, Monaco Editor, Strudel REPL
+### Agent responsibilities
+
+| Agent | Input | Output |
+|-------|-------|--------|
+| **Supervisor** | user message + conversation history | intent classification + agent routing |
+| **Music Expert** | user intent + musical context | structured musical specification |
+| **Strudel Coder** | musical specification | Strudel pattern code |
+| **Knobs Agent** | generated code | list of real-time parameter controls |
+| **Response Agent** | full pipeline result | streaming human-readable reply |
+| **Creative Agent** | musical context (no user input) | autonomous variation suggestions |
+| **Error Recovery Agent** | Strudel runtime error + current code | corrected code |
+
+### Shared state (`MusicState`)
+
+All agents read and write a single `TypedDict` propagated through the LangGraph graph:
+
+```python
+MusicState {
+  strudel_code        # current pattern code
+  musical_context     # key, scale, tempo, instrumentation, …
+  conversation_history# full session history (immutable append)
+  active_knobs        # real-time controls exposed to the UI
+  user_intent         # classified by Supervisor
+  next_agents         # routing decision
+  creative_mode       # autonomous variation flag
+  code_error          # last Strudel runtime error
+}
+```
+
+### Frontend layers
+
+```
+App.tsx
+├── useWebSocket        — WS connection, stream accumulation, state dispatch
+├── usePresets          — 16-slot CRUD, localStorage persistence
+├── useSceneQueue       — BPM-aware queue-on-cycle scheduling
+└── useTapTempo         — rolling average tap tempo (3+ taps)
+
+Components
+├── Chat                — streaming text, markdown rendering
+├── CodeEditor          — Monaco + Strudel language + dark theme
+├── StrudelPlayer       — REPL embed + full FX chain (Web Audio API)
+├── Waveform            — 60 fps FFT canvas
+├── BpmEqPanel          — drag knob, EQ/FX faders, beat indicator
+├── KnobPanel           — dynamic AI-generated parameter sliders
+├── PresetDrawer        — 16 slots, color picker, BPM badge, queue button
+└── Recorder            — MediaRecorder → .webm download
+```
+
+**Backend:** Python 3.11 · FastAPI · LangGraph · LiteLLM · python-rtmidi  
+**Frontend:** React 18 · TypeScript · Vite · Monaco Editor · Strudel REPL
 
 ---
 
